@@ -31,7 +31,7 @@ DEVICE = torch.device("cuda")
 # Benchmark Configuration
 if "--large" in sys.argv:
     WARMUP_ITERS = 5
-    TIMING_ITERS = 5,
+    TIMING_ITERS = 5
     REPEATS_PER_ITER = 10
 else:
     WARMUP_ITERS = 5
