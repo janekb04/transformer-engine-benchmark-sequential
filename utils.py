@@ -19,6 +19,7 @@ def speedometer(
     timing_iters: int,
     warmup_iters: int,
     repeats_per_iter: int,
+    print_time_per_layer: bool = False,
 ):
     """Measure average run time for a PyTorch module
 
@@ -27,7 +28,7 @@ def speedometer(
     if fp8_autocast_kwargs is None:
         fp8_autocast_kwargs = {"enabled": False}
 
-    def _benchmark(iters: int):
+    def _benchmark(iters: int, print_time_per_layer: bool):
         times: list[float] = []
         for i in range(iters):
             start = torch.cuda.Event(enable_timing=True)
@@ -47,16 +48,18 @@ def speedometer(
 
             total_time = start.elapsed_time(end)  # in ms
             time_per_layer = total_time / repeats_per_iter
+            if print_time_per_layer:
+                print(time_per_layer, flush=True)
             times.append(time_per_layer)
         return times
 
     # Warmup runs
     with nvtx.annotate("warmup"):
-        _benchmark(warmup_iters)
+        _benchmark(warmup_iters, False)
 
     # Timing runs
     with nvtx.annotate("timing"):
-        times = _benchmark(timing_iters)
+        times = _benchmark(timing_iters, print_time_per_layer)
 
     times_tensor = torch.tensor(times)
     mean = times_tensor.mean().item()
