@@ -30,11 +30,13 @@ DEVICE = torch.device("cuda")
 
 # Benchmark Configuration
 if "--large" in sys.argv:
-    WARMUP_ITERS = 50
-    TIMING_ITERS = 50
+    WARMUP_ITERS = 5
+    TIMING_ITERS = 5,
+    REPEATS_PER_ITER = 10
 else:
-    WARMUP_ITERS = 500
-    TIMING_ITERS = 10000
+    WARMUP_ITERS = 5
+    TIMING_ITERS = 100
+    REPEATS_PER_ITER = 100
 
 # Transformer layers to compare
 fused_te_transformer_layer = FusedTETransformerLayer(
@@ -70,16 +72,17 @@ fp8_autocast_kwargs = { "enabled": True, "fp8_recipe": fp8_recipe }
 # Test layers
 def _test_layer(layer: nn.Module, name: str, fp8_autocast_kwargs: dict | None):
     with nvtx.annotate(name):
-        mean_ms = speedometer(
+        mean_ms, ci95 = speedometer(
             layer,
             x,
             dy,
             { "attention_mask": None },
             fp8_autocast_kwargs,
             TIMING_ITERS,
-            WARMUP_ITERS
+            WARMUP_ITERS,
+            REPEATS_PER_ITER
         )
-    print(f"{mean_ms:.2f} ms|", end='', flush=True)
+    print(f"{mean_ms:.2f}±{ci95:.2f}ms|", end='', flush=True)
 
 def test_layer_with_without_fp8(layer: nn.Module, name: str):
     _test_layer(layer, name, None)
