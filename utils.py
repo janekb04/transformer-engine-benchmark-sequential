@@ -34,7 +34,7 @@ def speedometer(
             end = torch.cuda.Event(enable_timing=True)
 
             torch.cuda.synchronize()
-            start.record()
+            start.record(torch.cuda.default_stream())
 
             with te.fp8_autocast(**fp8_autocast_kwargs):
                 output = layer(input, **forward_kwargs)
@@ -42,7 +42,7 @@ def speedometer(
                     output = layer(output, **forward_kwargs)
             output.backward(output_grad)
 
-            end.record()
+            end.record(torch.cuda.default_stream())
             torch.cuda.synchronize()
 
             total_time = start.elapsed_time(end)  # in ms
