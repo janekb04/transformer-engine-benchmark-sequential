@@ -5,51 +5,65 @@
 import math
 from typing import Optional
 import torch
+from torch import nn
 import transformer_engine.pytorch as te
 import nvtx
 
 
 def speedometer(
-    module: torch.nn.Module,
+    layer: torch.nn.Module,
     input: torch.Tensor,
     output_grad: torch.Tensor,
-    forward_kwargs: dict = {},
-    fp8_autocast_kwargs: Optional[dict] = None,
-    timing_iters: int = 50,
-    warmup_iters: int = 50,
-) -> float:
+    forward_kwargs: dict,
+    fp8_autocast_kwargs: dict | None,
+    timing_iters: int,
+    warmup_iters: int,
+    repeats_per_iter: int,
+):
     """Measure average run time for a PyTorch module
 
     Performs forward and backward passes.
     """
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
     if fp8_autocast_kwargs is None:
         fp8_autocast_kwargs = {"enabled": False}
 
     def _benchmark(iters: int):
+        times: list[float] = []
         for i in range(iters):
-            with nvtx.annotate(f"iter_{i}"):
-                with nvtx.annotate("forward"):
-                    with te.fp8_autocast(**fp8_autocast_kwargs):
-                        output = module(input, **forward_kwargs)
-                with nvtx.annotate("backward"):
-                    output.backward(output_grad)
+            start = torch.cuda.Event(enable_timing=True)
+            end = torch.cuda.Event(enable_timing=True)
+
+            torch.cuda.synchronize()
+            start.record()
+
+            with te.fp8_autocast(**fp8_autocast_kwargs):
+                output = layer(input, **forward_kwargs)
+                for _ in range(1, repeats_per_iter):
+                    output = layer(output, **forward_kwargs)
+            output.backward(output_grad)
+
+            end.record()
+            torch.cuda.synchronize()
+
+            total_time = start.elapsed_time(end)  # in ms
+            time_per_layer = total_time / repeats_per_iter
+            times.append(time_per_layer)
+        return times
 
     # Warmup runs
-    torch.cuda.synchronize()
     with nvtx.annotate("warmup"):
         _benchmark(warmup_iters)
 
     # Timing runs
-    start.record()
     with nvtx.annotate("timing"):
-        _benchmark(timing_iters)
-    end.record()
-    torch.cuda.synchronize()
+        times = _benchmark(timing_iters)
 
-    elapsed_ms = start.elapsed_time(end)/timing_iters
-    return elapsed_ms
+    times_tensor = torch.tensor(times)
+    mean = times_tensor.mean().item()
+    std = times_tensor.std(unbiased=True).item()
+    ci95 = 1.96 * std / math.sqrt(timing_iters)
+
+    return mean, ci95
 
 class DotProductAttention(torch.nn.Module):
     """Attention operation in Transformer layer
