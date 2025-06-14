@@ -8,6 +8,7 @@ import torch
 from torch import nn
 import transformer_engine.pytorch as te
 import nvtx
+import gc
 
 
 def speedometer(
@@ -33,6 +34,8 @@ def speedometer(
         for i in range(iters):
             start = torch.cuda.Event(enable_timing=True)
             end = torch.cuda.Event(enable_timing=True)
+
+            gc.collect()
 
             torch.cuda.synchronize()
             start.record(torch.cuda.default_stream())
