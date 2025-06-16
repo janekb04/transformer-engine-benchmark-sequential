@@ -9,7 +9,12 @@ from torch import nn
 import transformer_engine.pytorch as te
 import nvtx
 import gc
+import psutil
 
+def pin_process_to_cpu():
+    proc = psutil.Process()
+    cpu = proc.cpu_num()
+    proc.cpu_affinity([cpu])
 
 def speedometer(
     layer: torch.nn.Module,
