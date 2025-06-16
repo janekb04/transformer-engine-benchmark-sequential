@@ -29,13 +29,14 @@ def speedometer(
     if fp8_autocast_kwargs is None:
         fp8_autocast_kwargs = {"enabled": False}
 
+    reenable_gc = gc.isenabled()
+    gc.disable()
+
     def _benchmark(iters: int, print_time_per_layer: bool):
         times: list[float] = []
         for i in range(iters):
             start = torch.cuda.Event(enable_timing=True)
             end = torch.cuda.Event(enable_timing=True)
-
-            gc.collect()
 
             torch.cuda.synchronize()
             start.record(torch.cuda.default_stream())
@@ -68,6 +69,10 @@ def speedometer(
     mean = times_tensor.mean().item()
     std = times_tensor.std(unbiased=True).item()
     ci95 = 1.96 * std / math.sqrt(timing_iters)
+
+    if reenable_gc:
+        gc.enable()
+        gc.collect()
 
     return mean, ci95
 
