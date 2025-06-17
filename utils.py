@@ -13,8 +13,7 @@ import psutil
 
 def pin_process_to_cpu():
     proc = psutil.Process()
-    cpu = proc.cpu_num()
-    proc.cpu_affinity([cpu])
+    proc.cpu_affinity([0])
 
 def speedometer(
     layer: torch.nn.Module,
