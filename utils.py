@@ -71,8 +71,8 @@ def speedometer(
     ci95 = 1.96 * std / math.sqrt(timing_iters)
 
     if reenable_gc:
-        gc.enable()
         gc.collect()
+        gc.enable()
 
     return mean, ci95
 
