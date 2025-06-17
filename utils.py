@@ -11,10 +11,6 @@ import nvtx
 import gc
 import psutil
 
-def pin_process_to_cpu():
-    proc = psutil.Process()
-    proc.cpu_affinity([0])
-
 def speedometer(
     layer: torch.nn.Module,
     input: torch.Tensor,

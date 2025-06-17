@@ -8,7 +8,7 @@ import transformer_engine.pytorch as te
 from transformer_engine.common.recipe import Format, DelayedScaling
 from fused_te_layer import FusedTETransformerLayer
 from sequential_te_layer import SequentialTETransformerLayer
-from utils import speedometer, pin_process_to_cpu
+from utils import speedometer
 import nvtx
 import sys
 
@@ -87,8 +87,6 @@ def _test_layer(layer: nn.Module, name: str, fp8_autocast_kwargs: dict | None):
 def test_layer_with_without_fp8(layer: nn.Module, name: str):
     _test_layer(layer, name, None)
     _test_layer(layer, name + " (FP8)", fp8_autocast_kwargs)
-
-pin_process_to_cpu()
 
 test_layer_with_without_fp8(fused_te_transformer_layer, "Fused TE Layer")
 test_layer_with_without_fp8(sequential_te_transformer_layer, "Sequential TE Layer")

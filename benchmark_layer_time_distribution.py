@@ -5,7 +5,7 @@
 import torch
 from transformer_engine.common.recipe import Format, DelayedScaling
 from sequential_te_layer import SequentialTETransformerLayer
-from utils import speedometer, pin_process_to_cpu
+from utils import speedometer
 
 HIDDEN_SIZE = 768
 SEQUENCE_LENGTH = 512
@@ -30,8 +30,6 @@ dy = torch.rand(SEQUENCE_LENGTH, BATCH_SIZE, HIDDEN_SIZE).cuda().to(dtype=DTYPE)
 fp8_format = Format.HYBRID
 fp8_recipe = DelayedScaling(fp8_format=fp8_format, amax_history_len=16, amax_compute_algo="max")
 fp8_autocast_kwargs = { "enabled": True, "fp8_recipe": fp8_recipe }
-
-pin_process_to_cpu()
 
 speedometer(
     sequential_te_transformer_layer,
