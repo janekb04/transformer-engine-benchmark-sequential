@@ -72,7 +72,7 @@ fp8_autocast_kwargs = { "enabled": True, "fp8_recipe": fp8_recipe }
 # Test layers
 def _test_layer(layer: nn.Module, name: str, fp8_autocast_kwargs: dict | None):
     with nvtx.annotate(name):
-        mean_ms, ci95 = speedometer(
+        mean_ms = speedometer(
             layer,
             x,
             dy,
@@ -82,7 +82,7 @@ def _test_layer(layer: nn.Module, name: str, fp8_autocast_kwargs: dict | None):
             WARMUP_ITERS,
             REPEATS_PER_ITER
         )
-    print(f"{mean_ms:.2f}±{ci95:.2f}ms|", end='', flush=True)
+    print(f"{mean_ms:.2f}ms|", end='', flush=True)
 
 def test_layer_with_without_fp8(layer: nn.Module, name: str):
     _test_layer(layer, name, None)

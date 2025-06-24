@@ -5,11 +5,9 @@
 import math
 from typing import Optional
 import torch
-from torch import nn
 import transformer_engine.pytorch as te
 import nvtx
 import gc
-import psutil
 
 def speedometer(
     layer: torch.nn.Module,
@@ -34,7 +32,7 @@ def speedometer(
 
     def _benchmark(iters: int, print_time_per_layer: bool):
         times: list[float] = []
-        for i in range(iters):
+        for _ in range(iters):
             start = torch.cuda.Event(enable_timing=True)
             end = torch.cuda.Event(enable_timing=True)
 
@@ -67,14 +65,12 @@ def speedometer(
 
     times_tensor = torch.tensor(times)
     mean = times_tensor.mean().item()
-    std = times_tensor.std(unbiased=True).item()
-    ci95 = 1.96 * std / math.sqrt(timing_iters)
 
     if reenable_gc:
         gc.collect()
         gc.enable()
 
-    return mean, ci95
+    return mean
 
 class DotProductAttention(torch.nn.Module):
     """Attention operation in Transformer layer
