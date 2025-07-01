@@ -38,7 +38,7 @@ COMMITS=$(git rev-list --reverse "$BASE_COMMIT"..origin/"$BRANCH")
 COMMITS="$BASE_COMMIT"$'\n'"$COMMITS"
 
 # --- Output header (stdout) ---
-echo "|Commit|Fused TE Layer (BF16)|Fused TE Layer (FP8)|Sequential TE Layer (BF16)|Sequential TE Layer (FP8)|Builtin TE TransformerLayer (BF16)|Builtin TE TransformerLayer (FP8)|"
+echo "|Commit|Fused BF16|Fused FP8|Sequential BF16|Sequential FP8|Builtin BF16|Builtin FP8|"
 echo "|-|-|-|-|-|-|-|"
 
 for COMMIT in $COMMITS; do
