@@ -31,29 +31,39 @@ def speedometer(
     gc.disable()
 
     def _benchmark(iters: int, print_time_per_layer: bool):
-        times: list[float] = []
+        forward_times: list[float] = []
+        backward_times: list[float] = []
         for _ in range(iters):
-            start = torch.cuda.Event(enable_timing=True)
-            end = torch.cuda.Event(enable_timing=True)
+            start_forward = torch.cuda.Event(enable_timing=True)
+            start_backward = torch.cuda.Event(enable_timing=True)
+            end_backward = torch.cuda.Event(enable_timing=True)
 
             torch.cuda.synchronize()
-            start.record(torch.cuda.default_stream())
+            start_forward.record(torch.cuda.default_stream())
 
             with te.fp8_autocast(**fp8_autocast_kwargs):
                 output = layer(input, **forward_kwargs)
                 for _ in range(1, repeats_per_iter):
                     output = layer(output, **forward_kwargs)
+
+            start_backward.record(torch.cuda.default_stream())
             output.backward(output_grad)
 
-            end.record(torch.cuda.default_stream())
+            end_backward.record(torch.cuda.default_stream())
             torch.cuda.synchronize()
 
-            total_time = start.elapsed_time(end)  # in ms
-            time_per_layer = total_time / repeats_per_iter
+            forward_time = start_forward.elapsed_time(start_backward)  # in ms
+            time_per_layer = forward_time / repeats_per_iter
+            forward_times.append(time_per_layer)
+
+            backward_time = start_backward.elapsed_time(end_backward)
+            time_per_layer = backward_time / repeats_per_iter
+            backward_times.append(time_per_layer)
+
             if print_time_per_layer:
-                print(time_per_layer, flush=True)
-            times.append(time_per_layer)
-        return times
+                print(f"{forward_times[-1]}/{backward_times[-1]}", flush=True)
+
+        return forward_times, backward_times
 
     # Warmup runs
     with nvtx.annotate("warmup"):
@@ -61,16 +71,19 @@ def speedometer(
 
     # Timing runs
     with nvtx.annotate("timing"):
-        times = _benchmark(timing_iters, print_time_per_layer)
+        forward_times, backward_times = _benchmark(timing_iters, print_time_per_layer)
 
-    times_tensor = torch.tensor(times)
-    mean = times_tensor.mean().item()
+    forward_times_tensor = torch.tensor(forward_times)
+    forward_mean = forward_times_tensor.mean().item()
+
+    backward_times_tensor = torch.tensor(backward_times)
+    backward_mean = backward_times_tensor.mean().item()
 
     if reenable_gc:
         gc.collect()
         gc.enable()
 
-    return mean
+    return forward_mean, backward_mean
 
 class DotProductAttention(torch.nn.Module):
     """Attention operation in Transformer layer

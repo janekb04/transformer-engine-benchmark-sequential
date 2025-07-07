@@ -38,6 +38,8 @@ else:
     TIMING_ITERS = 100
     REPEATS_PER_ITER = 100
 
+SEPARATE_PASS_TIMES = "--separate-pass-times" in sys.argv
+
 # Transformer layers to compare
 fused_te_transformer_layer = FusedTETransformerLayer(
     HIDDEN_SIZE,
@@ -73,7 +75,7 @@ fp8_autocast_kwargs = { "enabled": True, "fp8_recipe": fp8_recipe }
 def _test_layer(layer: nn.Module, name: str, fp8_autocast_kwargs: dict | None):
     try:
         with nvtx.annotate(name):
-            mean_ms = speedometer(
+            fwd_mean_ms, bwd_mean_ms = speedometer(
                 layer,
                 x,
                 dy,
@@ -84,8 +86,12 @@ def _test_layer(layer: nn.Module, name: str, fp8_autocast_kwargs: dict | None):
                 REPEATS_PER_ITER
             )
     except Exception:
-        mean_ms = -1.0
-    print(f"{mean_ms:.2f}ms|", end='', flush=True)
+        fwd_mean_ms, bwd_mean_ms = float('nan'), float('nan')
+
+    if SEPARATE_PASS_TIMES:
+        print(f"{fwd_mean_ms:.2f}+{bwd_mean_ms:.2f}ms|", end='', flush=True)
+    else:
+        print(f"{fwd_mean_ms + bwd_mean_ms:.2f}ms|", end='', flush=True)
 
 def test_layer_with_without_fp8(layer: nn.Module, name: str):
     _test_layer(layer, name, None)
