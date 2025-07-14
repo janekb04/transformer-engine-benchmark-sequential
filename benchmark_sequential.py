@@ -63,7 +63,7 @@ builtin_te_transformer_layer = te.TransformerLayer(
 builtin_te_transformer_layer.to(dtype=DTYPE).cuda()
 
 # Synthetic data
-x = torch.rand(SEQUENCE_LENGTH, BATCH_SIZE, HIDDEN_SIZE).cuda().to(dtype=DTYPE)
+x = torch.rand(SEQUENCE_LENGTH, BATCH_SIZE, HIDDEN_SIZE, requires_grad=True).cuda().to(dtype=DTYPE)
 dy = torch.rand(SEQUENCE_LENGTH, BATCH_SIZE, HIDDEN_SIZE).cuda().to(dtype=DTYPE)
 
 # Setup fp8 autocast kwargs
